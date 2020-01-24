@@ -27,20 +27,20 @@ void main()
     vec3 ldir = normalize(light) - aPos;
     if (aPos.y <= 0.50f)
     {
-        color = vec3(0.0f, 46.0f / 255, 203.f / 255) + vec3(aPos.y, aPos.y, aPos.y) * .02;
+        color = vec3(0.224f, 0.557f, 1.0f) + vec3(aPos.y, aPos.y, aPos.y) * .02;
         color *= dot(normalize(light), norm) * 0.9f; //opacity = 0.5f * random + 0.5f; // clamp to [0.5f, 1.0f]
         water = 1.0f;
     }
     // sand
-    else if (aPos.y < 0.52f) color = vec3(1.0f, 220.0f / 255, 147.0f / 255);
+    else if (aPos.y < 0.52f) color = vec3(1.0f, 0.86f, 0.58);
     // green 1
-    else if (aPos.y < 0.58f) color = vec3(65.0f / 255, 162.0f / 255, 30.0f/ 255);
+    else if (aPos.y < 0.58f) color = vec3(0.25f, 0.64f, 0.12f);
     // green 2
-    else if (aPos.y < 0.61f) color = vec3(0.0f, 185.0f / 300.0f, 33.0f / 300.0f);
+    else if (aPos.y < 0.61f) color = vec3(0.0f, 0.62f, 0.11f);
     // mountain 1
-    else if (aPos.y < 0.65f) color = vec3(100.0f / 255, 94.0f / 255, 83.0f / 255);
+    else if (aPos.y < 0.65f) color = vec3(0.39f, 0.37f, 0.33f);
     // mountain 2
-    else if (aPos.y < 0.685f) color = vec3(71.0f / 255, 72.0f / 255, 60.0f / 255);
+    else if (aPos.y < 0.685f) color = vec3(0.28f, 0.28f, 0.24f);
     else color = vec3(0.98f, 0.98f, 0.98f);
     
     

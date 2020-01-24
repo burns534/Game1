@@ -40,7 +40,7 @@
 //};
 
 glm::vec3 cameraPos   = glm::vec3(0.0f, 5.0f,  4.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f,  -1.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f,  -4.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 glm::vec3 direction;
 
@@ -53,9 +53,9 @@ float lastX = 400; float lastY = 300; // half of the width and height
 
 bool firstMouse = true;
 
-glm::vec3 light(10.0f, 20.0f, 10.0f);
-glm::vec3 lightcol(1.0f, 1.0f, 0.803f);
-glm::vec3 sunPos(light.x, light.y, light.z);
+glm::vec3 light(0.5f, 1.0f, 0.5f);
+glm::vec3 lightcol(1.0f, 1.0f, 0.6f);
+glm::vec3 sunPos(0.5f, 1.0f, 0.5f);
 
 GLFWwindow* window;
 
@@ -66,6 +66,10 @@ float * vertices = meshData.vertices;
 unsigned* indices = meshData.indices;
 float* normals = meshData.normals;
 float * randoms = meshData.randoms;
+
+static const GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0 };
+
+
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -148,7 +152,7 @@ int run(int argc, char ** argv)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     
-    window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Game1", NULL, NULL);
 
     if (window == NULL)
     {
@@ -177,29 +181,28 @@ int run(int argc, char ** argv)
 
 void processInput(GLFWwindow *window)
 {
-    sunPos = glm::normalize(sunPos);
     const float cameraSpeed = 3.5f * deltaTime; // adjust accordingly
     glm::mat3 plane = glm::mat3(1.0f);
     plane[1][1] = 0.0f;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         cameraPos += cameraSpeed * glm::normalize(cameraFront * plane);
-        sunPos += cameraSpeed * glm::normalize(cameraFront * plane);
+        //sunPos += factor * cameraSpeed * glm::normalize(cameraFront * plane);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
         cameraPos -= cameraSpeed * glm::normalize(cameraFront * plane);
-        sunPos -= cameraSpeed * glm::normalize(cameraFront * plane);
+       // sunPos -= factor * cameraSpeed * glm::normalize(cameraFront * plane);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-        sunPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+      //  sunPos -= factor * glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-        sunPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+      //  sunPos += factor * glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraUp;
@@ -240,17 +243,44 @@ int main(int argc, char ** argv) {
     glBufferData(GL_ARRAY_BUFFER, meshData.vertices_size, randoms, GL_STATIC_DRAW);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
     
-    /*
-    GLuint VBOcolors;
-    glGenBuffers(1, &VBOcolors);
-    glBindBuffer(GL_ARRAY_BUFFER, VBOcolors);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    GLuint FBO;
+    glGenFramebuffers(1, &FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     
-    // bind to VAO
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 32, (void*) 12); // start after the pos data (12 bytes)
-     
-     
-     */
+    // create texture for colorbuffer
+    GLuint color_texture;
+    glGenTextures(1, &color_texture);
+    glBindTexture(GL_TEXTURE_2D, color_texture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 800, 600);
+    
+    // set up texture
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // attach color texture to FBO
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, color_texture, 0);
+    
+    // create texture for depth buffer
+    GLuint depth_texture;
+    glGenTextures(1, &depth_texture);
+    glBindTexture(GL_TEXTURE_2D, color_texture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT32F, 800, 600);
+    
+    // set up texture
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    
+    
+    // attach depth texture to the FBO
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture, 0);
+    
+    // bind original framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    // glDrawBuffers(1, draw_buffers);
     
     // make new element buffer object using the usual syntax
     GLuint EBO;
@@ -260,17 +290,10 @@ int main(int argc, char ** argv) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 12 * meshData.triangle_number, indices, GL_STATIC_DRAW); // same as for VBO
     
     
-    /* tells openGL how to interpret the vertex buffer data we are sending it
-        0 is the shader layout, 3 is data values (x,y,z), total size is 3 * sizeof(float) = 3 * 4 bytes
-     plus 0 casted to void pointer which is the offset parameter. We are beginning from the start of the
-     float array (tightly packed) so there is no offset */
-//    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    
     // enable the vertexarray attribute at layout 0 which we just told openGL how to interpret
     glEnableVertexAttribArray(0); // enable positions
     glEnableVertexAttribArray(1); // enable normals
     glEnableVertexAttribArray(2); // enable random
-    
     
      //enable wire mode
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // looks kinda good tbh
@@ -280,11 +303,15 @@ int main(int argc, char ** argv) {
     glCullFace(GL_BACK); // cull back face
     glFrontFace(GL_CW); // GL_CCW for counter clock-wise
     
+    // create shadow shader
+    Shader shadowShader("shader.shadowvs", "shader.shadowfs");
     
     // compile and link GLSL shader files
     Shader ourshader("shader.vs", "shader.fs");
     // set shader program active
     ourshader.use();
+    
+    
     
     // communicate with uniform variable in fragment shader
     // essentially tells the shader which texture comes first when assigning uniforms
@@ -299,6 +326,8 @@ int main(int argc, char ** argv) {
     glm::mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     
+    glm::mat4 shadowView = glm::lookAt(sunPos, glm::vec3(0.0f), cameraUp);
+    
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
@@ -308,10 +337,53 @@ int main(int argc, char ** argv) {
     direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
     cameraFront = glm::normalize(direction);
     
+    // declare uniforms
+    unsigned int modelLoc = glGetUniformLocation(ourshader.ID, "model");
+    unsigned int viewLoc  = glGetUniformLocation(ourshader.ID, "view");
+    unsigned int projectionLoc = glGetUniformLocation(ourshader.ID, "projection");
+    unsigned int lightLoc = glGetUniformLocation(ourshader.ID, "light");
+    unsigned int vLoc = glGetUniformLocation(ourshader.ID, "viewPos");
+    unsigned int lightcolorLoc = glGetUniformLocation(ourshader.ID, "lightcolor");
+    unsigned int sunLoc = glGetUniformLocation(ourshader.ID, "sunPos");
+    // declare uniforms for shadow shader
+    unsigned int shadowViewLoc = glGetUniformLocation(shadowShader.ID, "shadowView");
+    unsigned int shadowProjectionLoc = glGetUniformLocation(shadowShader.ID, "projection");
+    unsigned int shadowModelLoc = glGetUniformLocation(shadowShader.ID, "model");
+    //unsigned int lightSpaceLoc = glGetUniformLocation(shadowShader.ID, "lightSpaceLoc");
+    
+    glBindVertexArray(VAO);
     // render loop, closes with x click, 'q', or ESC;
     while(!glfwWindowShouldClose(window) && glfwGetKey(window, GLFW_KEY_Q) != GLFW_PRESS && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS)
     {
+        // bind our off-screen buffer and clear it
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        //glViewport(0, 0, 800, 600);
+        
+        // activate our shadow shader
+        shadowShader.use();
+        // send model uniform and lightSpace uniform matrices
+
+
+        glUniformMatrix4fv(shadowModelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(shadowViewLoc, 1, GL_FALSE, &shadowView[0][0]);
+        glUniformMatrix4fv(shadowProjectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glDrawElements(GL_TRIANGLES, 3 * meshData.triangle_number, GL_UNSIGNED_INT, 0); // render map to our depth buffer object
+        
+        // Now return to the default framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        
+        //reset viewport... viewport is constant ths whole time most likely so not really necessary
+        // glViewport(0, 0, winwidth, winheight);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // bind texture we just render to for reading
+        glBindTexture(GL_TEXTURE_2D, depth_texture);
+        
+        // activate a program that will read from the texture
+        ourshader.use();
+        
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -320,13 +392,6 @@ int main(int argc, char ** argv) {
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         
         // send uniforms to shaders
-        unsigned int modelLoc = glGetUniformLocation(ourshader.ID, "model");
-        unsigned int viewLoc  = glGetUniformLocation(ourshader.ID, "view");
-        unsigned int projectionLoc = glGetUniformLocation(ourshader.ID, "projection");
-        unsigned int lightLoc = glGetUniformLocation(ourshader.ID, "light");
-        unsigned int vLoc = glGetUniformLocation(ourshader.ID, "viewPos");
-        unsigned int lightcolorLoc = glGetUniformLocation(ourshader.ID, "lightcolor");
-        unsigned int sunLoc = glGetUniformLocation(ourshader.ID, "sunPos");
         
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
@@ -336,13 +401,13 @@ int main(int argc, char ** argv) {
         glUniform3f(lightcolorLoc, lightcol.x, lightcol.y, lightcol.z);
         glUniform3f(sunLoc, sunPos.x, sunPos.y, sunPos.z);
         
-        // bing correct VAO (we only have one)
-        glBindVertexArray(VAO);
         // bind element array of indices
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glDrawElements(GL_TRIANGLES, 3 * meshData.triangle_number, GL_UNSIGNED_INT, 0);
         glfwSwapBuffers(window);
         glfwPollEvents();
+        // unbind the texture and we're done
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     glfwTerminate();
