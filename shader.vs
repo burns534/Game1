@@ -2,18 +2,19 @@
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in float random;
-//layout (location = 1) in vec3 vertex_color;
-//layout (location = 2) in vec2 tex_coords;
-out vec3 color;
-out float opacity;
-out vec3 norm;
-out vec3 fragPos;
-out float water;
 
+out vec3 color; // output color for fragment shader
+out float opacity; // output opacity for fragment shader
+out vec3 norm; // output vertex normal for fragment shader to do shading calculations
+out vec3 fragPos; // output the fragment position, which is the position in world coordinates, needed for shading calculation
+out float water; // output if water or not for different shading procedure, essentially a bool
+out vec4 FragPosLightSpace; // output the fragment position in clipped coordinates from light perspective
 //out vec2 tex_coord;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpace;
+
 uniform vec3 light;
 
 void main()
@@ -21,7 +22,7 @@ void main()
     // water
     opacity = 1.0f;
     norm = mat3(transpose(inverse(model))) * normal;
-    fragPos = aPos;
+    fragPos = vec3(model * vec4(aPos, 1.0f));
     water = 0.0f;
     // need to add noise to the color layers
     vec3 ldir = normalize(light) - aPos;
@@ -48,9 +49,12 @@ void main()
     if (aPos.y > .50f)
     {
         color *= dot(normalize(light), norm) * 0.5f + 0.3f;
-        
     }
     //color.x *= 1.05f; color.y *= 1.05f; // yellow the light a bit
     //tex_coord = tex_coords;
-    gl_Position = projection * view * model * vec4(4.0f * aPos.x, 3.0f * aPos.y, 4.0f * aPos.z, 1.0);  // will return the same vector it received
+    FragPosLightSpace = lightSpace * model * vec4(aPos, 1.0f);
+    
+    //gl_Position = vec4(aPos, 1.0f);
+    gl_Position = projection * view * model * vec4(aPos, 1.0f);  // actual position vector
+    //TexCords =  shadowFragPos.xy * 0.5f + 0.5f; // convert NDC to texture cords
 }
