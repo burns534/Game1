@@ -8,27 +8,13 @@
 
 #ifndef Header_h
 #define Header_h
+#pragma once
+
 #include "NoiseMap.h"
 #include <fstream>
-#include "Droplet.h"
 #include "VectorUtility.h"
-#define UP 1
-#define DOWN 4
-#define RIGHT 2
-#define LEFT 5
-#define UP_LEFT 0
-#define DOWN_RIGHT 3
 
 std::ofstream outfile;
-struct vec3
-{
-    float x,y,z;
-};
-
-struct ivec3
-{
-    int x,y,z;
-};
 
 class Elements
 {
@@ -40,14 +26,13 @@ public:
     unsigned texCoords_size;
     NoiseMap* nmap;
     unsigned triangle_number;
-    vec3 * verts;
-    glm::vec3 * glmverts;
+    vu::vec3 <double> * verts;
+    vu::vec3 <double> * glmverts;
     float * normals;
     unsigned normal_number;
     float * randoms;
     
-    glm::vec3 * descent;
-    unsigned * directions;
+    vu::vec3 <double> * descent;
     
     int w,h;
     Elements(int width, int height)
@@ -56,14 +41,12 @@ public:
         // allocate arrays
         w = width; h = height;
         vertices = new float[3 * width * height]; // contains 12 byte objects storing (x,y,z) floats
-        verts = new vec3[width * height]; // vertex coordinates
+        verts = new vu::vec3 <double> [width * height]; // vertex coordinates
         nmap = new NoiseMap(width, height); // perlin data
         randoms = new float[3 * width * height]; // (x,y,z) for each vertex
         texCoords = new float[2 * width * height]; // (x,y) for each vertex
-        descent = new glm::vec3[width * height]; // one normal for each vertex
-        directions = new unsigned[width * height];
-        glmverts = new glm::vec3[width * height]; // glm::vec3 formatted vertices
-        
+        descent = new vu::vec3 <double> [width * height]; // one normal for each vertex
+       
         texCoords_size = 2 * width * height * 4;
         triangle_number = 2 * ( width - 1 ) * ( height - 1 );
         vertices_size = 3 * width * height * 4; // floats are 4 bytes
@@ -75,7 +58,7 @@ public:
                 // need to put in device coords
                 vertices[index] = (2.0f * x / (float)(width - 1)) - 1.0f;
                 verts[y * width + x].x = vertices[index]; // to make normal calculations simpler
-                glmverts[y * width + x].x = vertices[index]; // to make normal calculations actually simpler
+               // glmverts[y * width + x].x = vertices[index]; // to make normal calculations actually simpler
                 // already clamped to [0,1]
                 
                 vertices[index + 1] = pow(exp(nmap->noisemap[y*width + x]) / 2.72f, 1.5); // perlin z values
@@ -84,12 +67,12 @@ public:
                 vertices[index + 1] = 0.4375f + (0.0025f * nmap->n->OctavePerlin( x * 50.34f, y * 50.34f, 0, 8, .50, .003f)); // adds noise to water
                 outfile << vertices[index + 1] << "\n";
                 verts[y * width + x].y = vertices[index + 1];
-                glmverts[y * width + x].y = vertices[index + 1];
+                //glmverts[y * width + x].y = vertices[index + 1];
                 
                 //outfile << "(float (2.0f * y) / (height - 1) - 1.0f:" << (float) ( 2.0f * y) / (height - 1) - 1.0f << "\n";
                 vertices[index + 2] = static_cast<float> (2.0f * y) / (height - 1) - 1.0f;
                 verts[y * width + x].z = vertices[index + 2];
-                glmverts[y * width + x].z = vertices[index + 2];
+          //      glmverts[y * width + x].z = vertices[index + 2];
                 
                 // clamp to [0,1);
                 randoms[index] = (float)(rand() % 2048) / 2048;
@@ -133,12 +116,13 @@ public:
                 texCoords[(y+1) * width + x + 2] = 1.0f; // bottom right
                 texCoords[(y+1) * width + x + 3] = 0.0f;
             }
-        glm::vec3 right, left, up, down, down_right, up_left, up_right, down_left;
+        
+        vu::vec3 <double> right, left, up, down, down_right, up_left, up_right, down_left;
         bool r, l, u, d, dr, ul;
-        glm::vec3 norm1, norm2, norm3, norm4, norm5, norm6;
+        vu::vec3 <double> norm1, norm2, norm3, norm4, norm5, norm6;
         index = 0;
         normals = new float[3 * width * height];
-        glm::vec3 tempFaces[6];
+        vu::vec3 <double> tempFaces[6];
         /* FIX calculate normals for each vector... and store it in normals array
          this is done by summing the cross product of surrouding face junctions for each vector...
          going to have poor edge conditions I imagine */
@@ -149,87 +133,99 @@ public:
                 u = d = r = l = ul = dr = false;
                 if ( y - 1 >= 0 && x - 1 < width )
                 {
-                    up_left = glmverts[(y-1) * width + x - 1];
-                    outfile << "up_left - glmverts: " << up_left.x - glmverts[y*width+x].x << ", " << up_left.y - glmverts[y*width+x].y << ", " << up_left.z - glmverts[y*width+x].z << "\n";
+                    
+
                     // they appear to be the same.. I'm not really sure what the issue is here.
-                    up_left = glm::vec3(
-                                        verts[(y-1) * width + x - 1].x - verts[y * width + x].x,
-                                        verts[(y-1) * width + x - 1].y - verts[y * width + x].y,
-                                        verts[(y-1) * width + x - 1].z - verts[y * width + x].z
-                                        );
-                    outfile << "up_left: " << up_left.x << ", " << up_left.y << ", " << up_left.z << "\n";
+//                    up_left = vu::vec3 <double> (
+//                                        verts[(y-1) * width + x - 1].x - verts[y * width + x].x,
+//                                        verts[(y-1) * width + x - 1].y - verts[y * width + x].y,
+//                                        verts[(y-1) * width + x - 1].z - verts[y * width + x].z
+//                                        );
+                    up_left = verts[(y-1) * width + x - 1] - verts[y * width + x];
                     ul = true;
                 }
                 if ( y - 1 >= 0 )
                 {
-                    up = glmverts[(y-1) * width + x];
-//                    up = glm::vec3(
+                    
+//                    up = vu::vec3 <double> (
 //                                   verts[(y-1) * width + x].x - verts[y * width + x].x,
 //                                   verts[(y-1) * width + x].y - verts[y * width + x].y,
 //                                   verts[(y-1) * width + x].z - verts[y * width + x].z
 //                                   );
+                    up = verts[(y-1) * width + x] - verts[y * width + x];
                     u = true;
                 }
                 if ( x - 1 >= 0 )
                 {
-                    left = glmverts[y * width + x - 1];
-//                    left = glm::vec3(
+                    
+//                    left = vu::vec3 <double> (
 //                                     verts[y * width + x - 1].x - verts[y * width + x].x,
 //                                     verts[y * width + x - 1].y - verts[y * width + x].y,
 //                                     verts[y * width + x - 1].z - verts[y * width + x].z
 //                                     );
+                    left = verts[y * width + x - 1] - verts[y * width + x];
                     l = true;
                 }
                 if ( x + 1 < width )
                 {
-                    right = glmverts[y * width + x + 1];
-//                    right = glm::vec3(
+                    
+//                    right = vu::vec3 <double> (
 //                                      verts[y * width + x + 1].x - verts[y * width + x].x,
 //                                      verts[y * width + x + 1].y - verts[y * width + x].y,
 //                                      verts[y * width + x + 1].z - verts[y * width + x].z
 //                                      );
+                    right = verts[y * width + x + 1] - verts[y * width + x];
                     r = true;
                 }
                 if ( y + 1 < height && x + 1 < width )
                 {
-                    down_right = glmverts[(y+1) * width + x + 1];
-//                    down_right = glm::vec3(
+                    
+//                    down_right = vu::vec3 <double> (
 //                                           verts[(y+1) * width + x + 1].x - verts[y * width + x].x,
 //                                           verts[(y+1) * width + x + 1].y - verts[y * width + x].y,
 //                                           verts[(y+1) * width + x + 1].z - verts[y * width + x].z
 //                                           );
+                    down_right = verts[(y+1) * width + x + 1] - verts[y * width + x];
                     dr = true;
                 }
                 if ( y + 1 < height )
                 {
-                    down = glmverts[(y+1) * width + x];
-//                    down = glm::vec3(
+//                    down = vu::vec3 <double> (
 //                                     verts[(y+1) * width + x].x - verts[y * width + x].x,
 //                                     verts[(y+1) * width + x].y - verts[y * width + x].y,
 //                                     verts[(y+1) * width + x].z - verts[y * width + x].z
 //                                     );
+                    down = verts[(y+1) * width + x] - verts[y * width + x];
                     d = true;
                 }
                 
-                if ( y - 1 >= 0 && x + 1 < width ) up_right = glmverts[(y-1) * width + x + 1]; // up_right vertex
+                if ( y - 1 >= 0 && x + 1 < width ) up_right = verts[(y-1) * width + x + 1]; // up_right vertex
                 
-                if ( y + 1 < height && x - 1 >= 0 ) down_left = glmverts[(y+1) * width + x - 1]; // down left vertex
+                if ( y + 1 < height && x - 1 >= 0 ) down_left = verts[(y+1) * width + x - 1]; // down left vertex
                 
                 // calculate each available face normal, minimum of two for the 4 corners, 3 for edges, otherwise all 6;
-                if (u && ul) norm1 = glm::cross((up - glmverts[y * width + x]), up_left);
-                if (u && r) norm2 = glm::cross((right - glmverts[y * width + x]), up);
-                if (r && dr) norm3 = glm::cross((down_right - glmverts[y * width + x]), right);
-                if (dr && d) norm4 = glm::cross((down - glmverts[y * width + x]), down_right);
-                if (d && l) norm5 = glm::cross((left - glmverts[y * width + x]), down);
-                if (l && ul) norm6 = glm::cross((up_left - glmverts[y * width + x]), left);
+                if (u && ul) norm1 = up_left.cross(up) * -1;
+                if (u && r) norm2 = up.cross(right) * -1;
+                if (r && dr) norm3 = right.cross(down_right) * -1;
+                if (dr && d) norm4 = down_right.cross(down) * -1;
+                if (d && l) norm5 = down.cross(left) * -1;
+                if (l && ul) norm6 = left.cross(up_left) * -1;
                 
-                // average these normals
-//                glm::vec3 avg = norm1 + norm2 + norm3 + norm4 + norm5 + norm6;
-//                avg /= 6;
+//                if(u && ul) norm1 = up_left.cross(up - verts[y * width + x]) * -1;
+//                if(u && r) norm2 = up.cross(right - verts[y * width + x]) * -1;
+//                if(r && dr) norm3 = right.cross(down_right - verts[y * width + x]) * -1;
+//                if(dr && d) norm4 = down_right.cross(down - verts[y * width + x]) * -1;
+//                if(d && l) norm5 = down.cross(left - verts[y * width + x]) * -1;
+//                if(l && ul) norm6 = left.cross(up_left - verts[y * width + x]) * -1;
                 
-                glm::vec3 avg = (norm1 );
+                
+              //   average these normals
+                vu::vec3 <double> avg = norm1 + norm2 + norm3 + norm4 + norm5 + norm6;
+                avg /= 6;
+                
+                //vu::vec3 <double> avg = (norm1); // this is why only the up vector affected the shading earlier
                 // convert to unit length
-                avg = glm::normalize(avg);
+                avg = avg.normalize();
                 // store in normals array
                 normals[index] = avg.x;
                 normals[index + 1] = avg.y;
@@ -249,7 +245,6 @@ public:
                     if (tempFaces[i].y < tempFaces[ind].y) ind = i;
                 }
                 descent[y * w + x] = tempFaces[ind]; // greatest descent for each vertex stored
-                directions[y * w + x] = ind;
                 //outfile << "Up: " << up.x << ", " << up.y << ", " << up.z << std::endl;
                 outfile << "Descent values x,y,z: " << tempFaces[ind].x << ", " << tempFaces[ind].y << ", " << tempFaces[ind].z << "\n";
             }
@@ -265,7 +260,7 @@ public:
     {
         double sedimentLoad = 0.1f;
         int currentx, currenty;
-        ivec3 direction;
+        vu::vec3 <int> direction;
         // for each vertex
         for ( int y = 0; y < h; y += 100 )
             for ( int x = 0; x < w; x += 100 )
