@@ -50,29 +50,28 @@ public:
         texCoords_size = 2 * width * height * 4;
         triangle_number = 2 * ( width - 1 ) * ( height - 1 );
         vertices_size = 3 * width * height * 4; // floats are 4 bytes
+        //double correctionFactor = 0.0025f;
         // fill vertices with appropriate data
         unsigned index = 0;
         for ( int y = 0; y < height; y++)
             for ( int x = 0; x < width; x++, index += 3)
             {
                 // need to put in device coords
-                vertices[index] = (2.0f * x / (float)(width - 1)) - 1.0f;
+                vertices[index] = (2.0f * x / (width - 1)) - 1.0f;
                 verts[y * width + x].x = vertices[index]; // to make normal calculations simpler
-               // glmverts[y * width + x].x = vertices[index]; // to make normal calculations actually simpler
                 // already clamped to [0,1]
                 
-                vertices[index + 1] = pow(exp(nmap->noisemap[y*width + x]) / 2.72f, 1.5); // perlin z values
+                // perlin z values smoothed by exponential function and then raised to 1.5
+                /* This was done to address the steep slope of the beaches/sand shoals on the map. */
+                vertices[index + 1] = exp(2.8 * nmap->noisemap[y*width + x]) / 20.0f; // 403 ~= e ^ 6
                 
-                if (vertices[index + 1] < 0.44f)
-                vertices[index + 1] = 0.4375f + (0.0025f * nmap->n->OctavePerlin( x * 50.34f, y * 50.34f, 0, 8, .50, .003f)); // adds noise to water
-                outfile << vertices[index + 1] << "\n";
+                if (vertices[index + 1] < 0.165f)
+                    vertices[index + 1] = 0.1625f;// + (correctionFactor * nmap->n->OctavePerlin( x * 50.34f, y * 50.34f, 0, 8, .50, .003f)); // adds noise to water
                 verts[y * width + x].y = vertices[index + 1];
-                //glmverts[y * width + x].y = vertices[index + 1];
                 
                 //outfile << "(float (2.0f * y) / (height - 1) - 1.0f:" << (float) ( 2.0f * y) / (height - 1) - 1.0f << "\n";
-                vertices[index + 2] = static_cast<float> (2.0f * y) / (height - 1) - 1.0f;
+                vertices[index + 2] = (2.0f * y) / (height - 1) - 1.0f;
                 verts[y * width + x].z = vertices[index + 2];
-          //      glmverts[y * width + x].z = vertices[index + 2];
                 
                 // clamp to [0,1);
                 randoms[index] = (float)(rand() % 2048) / 2048;
@@ -122,7 +121,7 @@ public:
         vu::vec3 <double> norm1, norm2, norm3, norm4, norm5, norm6;
         index = 0;
         normals = new float[3 * width * height];
-        vu::vec3 <double> tempFaces[6];
+        vu::vec3 <double> tempFaces[8];
         /* FIX calculate normals for each vector... and store it in normals array
          this is done by summing the cross product of surrouding face junctions for each vector...
          going to have poor edge conditions I imagine */
@@ -133,75 +132,38 @@ public:
                 u = d = r = l = ul = dr = false;
                 if ( y - 1 >= 0 && x - 1 < width )
                 {
-                    
-
-                    // they appear to be the same.. I'm not really sure what the issue is here.
-//                    up_left = vu::vec3 <double> (
-//                                        verts[(y-1) * width + x - 1].x - verts[y * width + x].x,
-//                                        verts[(y-1) * width + x - 1].y - verts[y * width + x].y,
-//                                        verts[(y-1) * width + x - 1].z - verts[y * width + x].z
-//                                        );
                     up_left = verts[(y-1) * width + x - 1] - verts[y * width + x];
                     ul = true;
                 }
                 if ( y - 1 >= 0 )
                 {
-                    
-//                    up = vu::vec3 <double> (
-//                                   verts[(y-1) * width + x].x - verts[y * width + x].x,
-//                                   verts[(y-1) * width + x].y - verts[y * width + x].y,
-//                                   verts[(y-1) * width + x].z - verts[y * width + x].z
-//                                   );
                     up = verts[(y-1) * width + x] - verts[y * width + x];
                     u = true;
                 }
                 if ( x - 1 >= 0 )
                 {
-                    
-//                    left = vu::vec3 <double> (
-//                                     verts[y * width + x - 1].x - verts[y * width + x].x,
-//                                     verts[y * width + x - 1].y - verts[y * width + x].y,
-//                                     verts[y * width + x - 1].z - verts[y * width + x].z
-//                                     );
                     left = verts[y * width + x - 1] - verts[y * width + x];
                     l = true;
                 }
                 if ( x + 1 < width )
                 {
-                    
-//                    right = vu::vec3 <double> (
-//                                      verts[y * width + x + 1].x - verts[y * width + x].x,
-//                                      verts[y * width + x + 1].y - verts[y * width + x].y,
-//                                      verts[y * width + x + 1].z - verts[y * width + x].z
-//                                      );
                     right = verts[y * width + x + 1] - verts[y * width + x];
                     r = true;
                 }
                 if ( y + 1 < height && x + 1 < width )
                 {
-                    
-//                    down_right = vu::vec3 <double> (
-//                                           verts[(y+1) * width + x + 1].x - verts[y * width + x].x,
-//                                           verts[(y+1) * width + x + 1].y - verts[y * width + x].y,
-//                                           verts[(y+1) * width + x + 1].z - verts[y * width + x].z
-//                                           );
                     down_right = verts[(y+1) * width + x + 1] - verts[y * width + x];
                     dr = true;
                 }
                 if ( y + 1 < height )
                 {
-//                    down = vu::vec3 <double> (
-//                                     verts[(y+1) * width + x].x - verts[y * width + x].x,
-//                                     verts[(y+1) * width + x].y - verts[y * width + x].y,
-//                                     verts[(y+1) * width + x].z - verts[y * width + x].z
-//                                     );
                     down = verts[(y+1) * width + x] - verts[y * width + x];
                     d = true;
                 }
                 
-                if ( y - 1 >= 0 && x + 1 < width ) up_right = verts[(y-1) * width + x + 1]; // up_right vertex
+                if ( y - 1 >= 0 && x + 1 < width ) up_right = verts[(y-1) * width + x + 1] - verts[y * width + x]; // up_right vertex
                 
-                if ( y + 1 < height && x - 1 >= 0 ) down_left = verts[(y+1) * width + x - 1]; // down left vertex
+                if ( y + 1 < height && x - 1 >= 0 ) down_left = verts[(y+1) * width + x - 1] - verts[y * width + x]; // down left vertex
                 
                 // calculate each available face normal, minimum of two for the 4 corners, 3 for edges, otherwise all 6;
                 if (u && ul) norm1 = up_left.cross(up) * -1;
@@ -230,7 +192,7 @@ public:
                 normals[index] = avg.x;
                 normals[index + 1] = avg.y;
                 normals[index + 2] = avg.z;
-                
+                //outfile << "phong normal: " << avg << std::endl;
                 // store direction vectors to adjacent vertices
                 tempFaces[0] = up_left;
                 tempFaces[1] = up;
@@ -238,56 +200,109 @@ public:
                 tempFaces[3] = down_right;
                 tempFaces[4] = down;
                 tempFaces[5] = left;
+                tempFaces[6] = up_right;
+                tempFaces[7] = down_left;
                 // will store the direction vector of greatest descent, which will be the velocity vector
+                
                 unsigned ind = 0;
-                for ( unsigned i = 0; i < 6; i++ )
+                bool flag = true;
+                for ( unsigned i = 0; i < 8; i++ )
                 {
-                    if (tempFaces[i].y < tempFaces[ind].y) ind = i;
+                    // if direction vector is less than current most downward
+                    if (tempFaces[i].y  < tempFaces[ind].y && tempFaces[i].y < 0.0f )
+                    {
+                        ind = i;
+                        flag = false;
+                    }
                 }
+                // store maximum descent vector
                 descent[y * w + x] = tempFaces[ind]; // greatest descent for each vertex stored
+                
+                if (flag) descent[y * w + x].y = -37.0f;
                 //outfile << "Up: " << up.x << ", " << up.y << ", " << up.z << std::endl;
-                outfile << "Descent values x,y,z: " << tempFaces[ind].x << ", " << tempFaces[ind].y << ", " << tempFaces[ind].z << "\n";
+//                outfile << "Descent values x,y,z: " << tempFaces[ind].x << ", " << tempFaces[ind].y << ", " << tempFaces[ind].z << "\n";
             }
         
-        //Erosion(0.1f, 20.0f, 0.001f, 0.001f);
+        //for ( int i = 0; i < 1; i++) Erosion(0.1f, 10.0f, 0.0001f, 0.05f);
     }
     ~Elements()
     {
-        delete[] vertices; delete[] indices; outfile.close();
+        delete[] vertices; delete[] indices; delete[] verts; delete[] randoms; outfile.close();
     }
     
     void Erosion(float alpha, float beta, float gamma, float threshold)
     {
-        double sedimentLoad = 0.1f;
         int currentx, currenty;
-        vu::vec3 <int> direction;
+        vu::vec2 <int> direction;
+        vu::vec3 <double> gravity(0.0f, -9.8f, 0.0f);
+        float acceleration = 0.0f;
+        float velocity = 0.0f;
+        float drop = 0.0f;
+        double sedimentLoad;
         // for each vertex
-        for ( int y = 0; y < h; y += 100 )
-            for ( int x = 0; x < w; x += 100 )
+        for ( int y = 0; y < h; y ++ )
+            for ( int x = 0; x < w; x ++ )
             {
                 int count = 0;
                 currenty = y;
                 currentx = x;
-                while( verts[currenty * w + currentx].y > 0.44f && count < 20 && currenty > 0 && currenty < h && currentx > 0 && currentx < w)
+                sedimentLoad = 0.0f;
+                while(verts[currenty * w + currentx].y > 0.44f && currenty > 0 && currenty < h && currentx > 0 && currentx < w)
                     // while we haven't hit water or done more than 20 iterations and won't access bad memory
                 {
+                    // determine if there will be a false alarm
+//                    if (descent[currenty * w + currentx].y == -37.0f)
+//                    {
+//                        // there is no good descent;
+//                        break;
+//                    }
+                    
                     // determine x direction of descent for next array access
                     if (descent[currenty * w + currentx].x > 0) direction.x = 1;
                     else if (descent[currenty * w + currentx].x < 0) direction.x = -1;
                     else direction.x = 0;
-                    // determine y direction of descent for next array access
-                    if (descent[currenty * w + currentx].y > 0) direction.y = 1;
-                    else if (descent[currenty * w + currentx].y < 0) direction.y = -1;
+                    //outfile << "here: " << currentx << ", " << currenty << ", " << descent[currenty * w + currentx] << std::endl;
+                    // determine z direction of descent for next array access
+                    if (descent[currenty * w + currentx].z > 0) direction.y = 1;
+                    else if (descent[currenty * w + currentx].z < 0) direction.y = -1;
                     else direction.y = 0;
                     
-                    // change y value of current vertex by 20%, hopefully enough to notice
-                    vertices[3 * (currenty * w + currentx) + 1] = 1.0f + (float) count / - 100.0f;
+                    // calculate acceleration
+                    acceleration = gravity.dot(descent[currenty * w + currentx].normalize());
                     
+                    
+                    //outfile << "acceleration: " << acceleration << "descent: " << descent << "\n";
+                    
+                    
+                    velocity = sqrt(velocity * velocity + 20.0f * acceleration) * (1.0f - alpha); // decrease velocity to simulate friction for each iteration
+                    outfile << "velocity: " << velocity << "\n";
+                    
+                    // water droplet is no longer moving, drop sediment and terminate
+                    if (velocity < threshold)
+                    {
+                        verts[currenty * w + currentx].y += sedimentLoad;
+                        break;
+                    }
+                    
+                    drop = (beta - velocity) / beta; // decrease sediment load proportional to difference in velocity and beta
+                    // if ratio is positive then velocity is less than beta and we drop sediment
+                    // if ratio is negative then velocity is greater than beta and we pick up sediment
+                    
+                    vertices[3 * (currenty * w + currentx) + 1] += gamma * drop;
+                    verts[currenty * w + currentx].y += gamma * drop; // increase y value by gamma time the sediment drop calculated, deposition inversely proportional to velocity
+                    if ( gamma * drop > 0 )
+                    sedimentLoad -= gamma * drop;
+                    //outfile << "gamma: " << gamma * drop << std::endl;
+                    // change y value of current vertex by 20%, hopefully enough to notice
+                    //vertices[3 * (currenty * w + currentx) + 1];
+                    
+                    here:
                     // set next vertex to check
                     currenty += direction.y;
                     currentx += direction.x;
                     count++;
                 }
+                outfile << "Count: " << count << "\n";
             }
 //        glm::vec3 gravity = glm::vec3(0.0f, -9.8f, 0.0f);
 //        float acceleration;

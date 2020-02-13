@@ -8,7 +8,7 @@
 
 #ifndef Shader_h
 #define Shader_h
-
+#pragma once
 
 #include <GL/glew.h> // include glad to get all the required OpenGL headers
   
