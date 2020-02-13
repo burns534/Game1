@@ -65,8 +65,8 @@ public:
                 /* This was done to address the steep slope of the beaches/sand shoals on the map. */
                 vertices[index + 1] = exp(2.8 * nmap->noisemap[y*width + x]) / 20.0f; // 403 ~= e ^ 6
                 
-                if (vertices[index + 1] < 0.165f)
-                    vertices[index + 1] = 0.1625f;// + (correctionFactor * nmap->n->OctavePerlin( x * 50.34f, y * 50.34f, 0, 8, .50, .003f)); // adds noise to water
+//                if (vertices[index + 1] < 0.165f)
+//                    vertices[index + 1] = 0.1625f;// + (correctionFactor * nmap->n->OctavePerlin( x * 50.34f, y * 50.34f, 0, 8, .50, .003f)); // adds noise to water
                 verts[y * width + x].y = vertices[index + 1];
                 
                 //outfile << "(float (2.0f * y) / (height - 1) - 1.0f:" << (float) ( 2.0f * y) / (height - 1) - 1.0f << "\n";

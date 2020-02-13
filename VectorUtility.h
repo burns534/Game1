@@ -182,6 +182,16 @@ namespace vu
         {
            return vec3 <T> (this->x - number, this->y - number, this->z - number);
         }
+        
+        vec3 <T> operator - (const vec3 <T> & v) const
+        {
+            return vec3 <T> (x - v.x, y - v.y, z - v.z);
+        }
+        
+        vec3 <T> operator + (const vec3 <T> & v) const
+        {
+            return vec3 <T> (x + v.x, y + v.y, z + v.z);
+        }
 
         friend std::ostream & operator << (std::ostream &os, const vec3 <T> & v)
         {

@@ -39,6 +39,51 @@ static const float tex[] = {
     0.0f, 1.0f
 };
 
+float skyboxVertices[] = {
+    // positions
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+};
+
 glm::vec3 cameraPos   = glm::vec3(0.0f, 2.0f,  1.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, -2.0f,  -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
@@ -75,6 +120,38 @@ int SCR_HEIGHT = 1024;
 
 int run(int argc, char** argv);
 void processInput(GLFWwindow * window);
+
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
 
 void init_texture(const char* filename, unsigned int &t, GLenum tex, GLenum format)
 {
@@ -114,6 +191,8 @@ int main(int argc, char ** argv) {
     outfile.open("mainlog.txt");
 
     if (run(argc, argv) == -1) return -1;
+    
+    for ( int i = 0; i < 108; i++ ) skyboxVertices[i] *= 10;
 
     //  make new vertex attribute array to store VBO's
     unsigned int VAO;
@@ -192,10 +271,36 @@ int main(int argc, char ** argv) {
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
+    
+    std::vector<std::string> faces
+    {
+        "right.jpg",
+        "left.jpg",
+        "top.jpg",
+        "bottom.jpg",
+        "front.jpg",
+        "back.jpg"
+    };
+    
+    unsigned skyBox = loadCubemap(faces);
+    
+    GLuint skyBoxVAO, skyBoxVerts;
+    glGenVertexArrays(1, &skyBoxVAO);
+    glBindVertexArray(skyBoxVAO);
+    
+    glGenBuffers(1, &skyBoxVerts);
+    glBindBuffer(GL_ARRAY_BUFFER, skyBoxVerts);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
+    
+    
+    // create skybox shader
+    Shader skyboxShader("skyBox.vs", "skyBox.fs");
+    skyboxShader.setInt("skybox", 0);
     // create shadow shader
-    Shader shadowShader("shader.shadowvs", "shader.shadowfs");
+    Shader shadowShader("shadow.vs", "shadow.fs");
 
     // compile and link GLSL shader files
     Shader ourshader("shader.vs", "shader.fs");
@@ -210,8 +315,8 @@ int main(int argc, char ** argv) {
 
     glBindBuffer(GL_ARRAY_BUFFER, quadVerts);
     glBufferData(GL_ARRAY_BUFFER, sizeof(v) , v, GL_STATIC_DRAW); // I had this wrong before
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
     // texture coords
     glGenBuffers(1, &quadTex);
     glBindBuffer(GL_ARRAY_BUFFER, quadTex);
@@ -251,8 +356,8 @@ int main(int argc, char ** argv) {
     // standard blend function
 //    glEnable(GL_BLEND);
 //    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT);
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_FRONT);
 
     // bind map vao
     glBindVertexArray(VAO);
@@ -268,12 +373,24 @@ int main(int argc, char ** argv) {
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         // input
         processInput(window);
-
-
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
+        
+        glDisable(GL_DEPTH_TEST);
+        skyboxShader.use();
+        skyboxShader.setMat4("projection", projection);
+        skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
+        //skyboxShader.setMat4("view", view);
+        glBindVertexArray(skyBoxVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, skyBoxVerts);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyBox);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glEnable(GL_DEPTH_TEST);
+
+        glBindVertexArray(VAO);
+
 //  1.  Render of off-screen z-buffer object depthMapFBO
 
         // use simple shader
@@ -296,9 +413,6 @@ int main(int argc, char ** argv) {
 
 //  2.
 
-        // clear buffer depth and color values
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         // render actual scene
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -313,7 +427,7 @@ int main(int argc, char ** argv) {
         glViewport(0, 0, width, height);
 
         ourshader.setInt("geehaw", 1); // is bound to GL_TEXTURE1
-        
+
         // send uniforms to main shader
         ourshader.setMat4("model", model);
         ourshader.setMat4("view", view);
@@ -326,16 +440,16 @@ int main(int argc, char ** argv) {
         ourshader.setVec3("sunPos", sunPos);
 
         ourshader.setFloat("time", currentFrame);
-        
+
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glDrawElements(GL_TRIANGLES, 3 * meshData.triangle_number, GL_UNSIGNED_INT, 0); // render scene to depth framebuffer from light's perspective
-        
-        
-//        glBindVertexArray(quadVAO);
-//        //glEnableVertexAttribArray(0);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadVBO);
-//        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        //glBindTexture(GL_TEXTURE_2D, 0); // unbind texture
+
+
+        glBindVertexArray(quadVAO);
+        //glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadVBO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindTexture(GL_TEXTURE_2D, 0); // unbind texture
 
         glfwSwapBuffers(window);
         glfwPollEvents();
